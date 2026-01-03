@@ -38,7 +38,7 @@ setup(
     long_description=long_description,
 
     # The project's main homepage.
-    url='https://github.com//ckanext-dge-ga-report',
+    url='https://github.com/datosgobes/ckanext-dge-ga-report',
 
     # Author details
     author='''''',
