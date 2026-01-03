@@ -1,6 +1,6 @@
-# Copyright (C) 2022 Entidad Pública Empresarial Red.es
+# Copyright (C) 2025 Entidad Pública Empresarial Red.es
 #
-# This file is part of "dge_ga_report (datos.gob.es)".
+# This file is part of "dge-ga-report (datos.gob.es)".
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -9,7 +9,7 @@
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
@@ -18,7 +18,7 @@
 # -*- coding:utf-8 -*-
 import logging
 import re
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import datetime
 
 from ckan.model.domain_object import DomainObject
@@ -28,13 +28,14 @@ from sqlalchemy import types
 from sqlalchemy.orm import mapper
 from sqlalchemy.sql.expression import cast
 from sqlalchemy import func
-from sqlalchemy.exc import InvalidRequestError
+from sqlalchemy.exc import InvalidRequestError, IntegrityError
+
+from psycopg2.errors import UniqueViolation 
 
 import ckan.model as model
 
 
-from lib import GaProgressBar
-from paste.util.PySourceColor import null
+from .lib import GaProgressBar
 
 log = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ class DgeGaPackage(DgeGaDomainObject):
     organization and publisher.
     '''
     def __init__(self, **kwargs):
-        for k,v in kwargs.items():
+        for k,v in list(kwargs.items()):
             setattr(self, k, v)
 
     def __repr__(self):
@@ -112,7 +113,7 @@ class DgeGaPackage(DgeGaDomainObject):
                           (year_month, end_day, str(pageviews), url, 
                           package_name, organization_id, publisher_id)
             log.debug(log_message)
-            print log_message
+            print(log_message)
 
 class DgeGaResource(DgeGaDomainObject):
     '''
@@ -120,16 +121,16 @@ class DgeGaResource(DgeGaDomainObject):
     pageviews, date, package, organization and publisher.
     '''
     def __init__(self, **kwargs):
-        for k,v in kwargs.items():
+        for k,v in list(kwargs.items()):
             setattr(self, k, v)
 
     def __repr__(self):
         return '''<DgeGaResource year_month=%s, end_day=%s, total_events=%s, 
                 url=%s, package_url=%s, resource_name=%s, resource_id=%s, 
-                package_name=%s, organization_id=%s, publisher_id=%s>''' % \
+                package_name=%s, organization_id=%s, publisher_id=%s, format=%s>''' % \
                (self.year_month, self.str(end_day), self.total_events, self.url, 
                 self.package_url, self.resource_name, self.resource_id, self.package_name, 
-                self.organization_id, self.publisher_id)
+                self.organization_id, self.publisher_id, self.format)
 
     def __str__(self):
         return self.__repr__().encode('ascii', 'ignore')
@@ -149,14 +150,14 @@ class DgeGaResource(DgeGaDomainObject):
 
     @classmethod
     def create(cls, year_month, end_day, total_events, url, package_url, resource_id, 
-               package_name, organization_id, publisher_id):
+               package_name, organization_id, publisher_id, format):
         '''
         Helper function to create an dge_ga_resource and save it.
         '''
         pd = cls(year_month=year_month, end_day=end_day, 
                  total_events=total_events, url=url, package_url=package_url, 
                  resource_id=resource_id, package_name=package_name, 
-                 organization_id=organization_id, publisher_id=publisher_id)
+                 organization_id=organization_id, publisher_id=publisher_id, format=format)
         try:
             pd.save()
         except InvalidRequestError:
@@ -166,12 +167,12 @@ class DgeGaResource(DgeGaDomainObject):
             # No need to alert administrator so don't log as an error
             log_message = '''year_month=%s, end_day=%s, total_events=%s, url=%s, 
                              package_url=%s, resource_id=%s, package_name=%s, 
-                             organization_id=%s, publisher_id=%s
+                             organization_id=%s, publisher_id=%s, format=%s
                           ''' % (year_month, str(end_day), str(total_events), 
                                  url, package_url, resource_id, package_name, 
-                                 organization_id, publisher_id)
+                                 organization_id, publisher_id, format)
             log.debug(log_message)
-            print log_message
+            print(log_message)
 
 class DgeGaVisit(DgeGaDomainObject):
     '''
@@ -179,7 +180,7 @@ class DgeGaVisit(DgeGaDomainObject):
     visits to datos.gob.es sections.
     '''
     def __init__(self, **kwargs):
-        for k,v in kwargs.items():
+        for k,v in list(kwargs.items()):
             setattr(self, k, v)
 
     def __repr__(self):
@@ -218,7 +219,7 @@ class DgeGaVisit(DgeGaDomainObject):
             log_message = 'year_month=%s, end_day=%s, sessions=%s, key=%s, key_value=%s' % \
              (year_month, str(end_day), str(sessions), key, key_value) 
             log.debug(log_message)
-            print log_message
+            print(log_message)
 
 
 dge_ga_package_table = Table(DGE_GA_PACKAGE_TABLE_NAME, metadata,
@@ -226,7 +227,7 @@ dge_ga_package_table = Table(DGE_GA_PACKAGE_TABLE_NAME, metadata,
                           Column('end_day', types.Integer, nullable = False),
                           Column('pageviews', types.Integer, nullable = False, server_default='0'),
                           Column('url', types.UnicodeText, nullable = False),
-                          Column('package_name', types.UnicodeText, nullable = False, server_default=u''),
+                          Column('package_name', types.UnicodeText, nullable = False, server_default=''),
                           Column('organization_id', types.UnicodeText, nullable = True),
                           Column('publisher_id', types.UnicodeText, nullable = True),
                           PrimaryKeyConstraint('year_month', 'url', 'package_name'))
@@ -238,8 +239,9 @@ dge_ga_resource_table = Table(DGE_GA_RESOURCE_TABLE_NAME, metadata,
                           Column('end_day', types.Integer, nullable = False),
                           Column('total_events', types.Integer, nullable = False, server_default='0'),
                           Column('url', types.UnicodeText, nullable = False),
+                          Column('format', types.UnicodeText, nullable = True),
                           Column('package_url', types.UnicodeText, nullable = False),
-                          Column('resource_id', types.UnicodeText, nullable = False, server_default=u''),
+                          Column('resource_id', types.UnicodeText, nullable = False, server_default=''),
                           Column('package_name', types.UnicodeText, nullable = True),
                           Column('organization_id', types.UnicodeText, nullable = True),
                           Column('publisher_id', types.UnicodeText, nullable = True),
@@ -252,7 +254,7 @@ dge_ga_visit_table = Table(DGE_GA_VISIT_TABLE_NAME, metadata,
                           Column('end_day', types.Integer, nullable = False),
                           Column('sessions', types.Integer, nullable = False, server_default='0'),
                           Column('key', types.UnicodeText, nullable = False),
-                          Column('key_value', types.UnicodeText, nullable = False, server_default=u''),
+                          Column('key_value', types.UnicodeText, nullable = False, server_default=''),
                           PrimaryKeyConstraint('year_month', 'key','key_value'))
 mapper(DgeGaVisit, dge_ga_visit_table)
 
@@ -266,33 +268,33 @@ def init_tables():
         not dge_ga_visit_table.exists(model.meta.engine)):
         metadata.create_all(model.meta.engine)
         log.debug('All dge_ga_tables created')
-        print 'All dge_ga_tables created'
+        print('All dge_ga_tables created')
         complete_historical_values_dge_ga_tables(DGE_GA_VISIT_TABLE_NAME)
     else:
         if not dge_ga_package_table.exists(model.meta.engine):
             dge_ga_package_table.create(model.meta.engine)
             log.debug('%s table created', DGE_GA_PACKAGE_TABLE_NAME)
-            print '%s table created' % (DGE_GA_PACKAGE_TABLE_NAME)
+            print('%s table created' % (DGE_GA_PACKAGE_TABLE_NAME))
         else:
             log.debug('%s table already exists', DGE_GA_PACKAGE_TABLE_NAME)
-            print '%s table already exists' % (DGE_GA_PACKAGE_TABLE_NAME)
+            print('%s table already exists' % (DGE_GA_PACKAGE_TABLE_NAME))
 
         if not dge_ga_resource_table.exists(model.meta.engine):
             dge_ga_resource_table.create(model.meta.engine);
             log.debug('%s table created', DGE_GA_RESOURCE_TABLE_NAME)
-            print '%s table created' % (DGE_GA_RESOURCE_TABLE_NAME)
+            print('%s table created' % (DGE_GA_RESOURCE_TABLE_NAME))
         else:
             log.debug('%s table already exists', DGE_GA_RESOURCE_TABLE_NAME)
-            print '%s table already exists' % (DGE_GA_RESOURCE_TABLE_NAME)
+            print('%s table already exists' % (DGE_GA_RESOURCE_TABLE_NAME))
 
         if not dge_ga_visit_table.exists(model.meta.engine):
             dge_ga_visit_table.create(model.meta.engine);
             log.debug('%s table created', DGE_GA_VISIT_TABLE_NAME)
-            print '%s table created' % (DGE_GA_VISIT_TABLE_NAME)
+            print('%s table created' % (DGE_GA_VISIT_TABLE_NAME))
             complete_historical_values_dge_ga_tables(DGE_GA_VISIT_TABLE_NAME)
         else:
             log.debug('%s table already exists', DGE_GA_VISIT_TABLE_NAME)
-            print '%s table already exists' % (DGE_GA_VISIT_TABLE_NAME)
+            print('%s table already exists' % (DGE_GA_VISIT_TABLE_NAME))
 
 cached_tables = {}
 
@@ -307,7 +309,7 @@ def get_table(name):
 def complete_historical_values_dge_ga_tables(tablename=None):
     if tablename == DGE_GA_VISIT_TABLE_NAME:
         log.debug("Adding historical data in %s", tablename)
-        print "Adding historical data in %s" % (tablename)
+        print("Adding historical data in %s" % (tablename))
         DgeGaVisit.create(year_month='2011-11', end_day=30, sessions=3436, key='all', key_value='')
         DgeGaVisit.create(year_month='2011-12', end_day=31, sessions=2129, key='all', key_value='')
         DgeGaVisit.create(year_month='2012-01', end_day=31, sessions=4304, key='all', key_value='')
@@ -373,13 +375,13 @@ def complete_historical_values_dge_ga_tables(tablename=None):
         DgeGaVisit.create(year_month='2017-01', end_day=31, sessions=23164, key='all', key_value='')
         DgeGaVisit.create(year_month='2017-02', end_day=28, sessions=27608, key='all', key_value='')
         log.debug("Historical data added in %s", tablename)
-        print "Historical data added in %s" % (tablename)
+        print("Historical data added in %s" % (tablename))
 
 
 class Identifier:
     
     def __init__(self):
-        from download_analytics import DownloadAnalytics
+        from .download_analytics import DownloadAnalytics
         Identifier.package_re = re.compile('^' + DownloadAnalytics.PACKAGE_URL_REGEX)
 
     def get_package_ref(self, url):
@@ -394,11 +396,8 @@ class Identifier:
         return package_ref
 
     def get_package_information(self, url):
-        # Example urls:
-        #       /catalogo/l01280066-cursos-infantiles
-        #       /catalogo/d7fc8964-e9da-42ab-8385-cbac70479f4b
+
         package_ref = self.get_package_ref(url)
-#         print 'Getting package for package_ref %s' % package_ref if package_ref else ''
         if package_ref:
             package = model.Package.get(package_ref)
             if package:
@@ -415,15 +414,12 @@ class Identifier:
                 return package.name, (org.id if org else None), \
                        (pub.id if pub else None)
             else:
-                #print 'No package found'
                 return None, None, None
         return None, None, None
 
     def get_resource_information(self, resource_url, package_url):
         package_ref = self.get_package_ref(package_url)
-#         print 'Getting resource for resource_url %s and package_ref %s' % (
-#                 resource_url if resource_url else '', 
-#                 package_ref if package_ref else '')
+
         if package_ref:
             package = model.Package.get(package_ref)
             if package:
@@ -442,7 +438,7 @@ class Identifier:
                     resource_urls = [resource_url]
                     res_url = None
                     try:
-                        res_url = urllib.unquote_plus(resource_url)
+                        res_url = urllib.parse.unquote_plus(resource_url)
                         resource_urls.append(res_url)
                     except:
                         pass
@@ -461,7 +457,7 @@ class Identifier:
                         resource_urls.append(res_url_1)
                         res_url_2 = None
                         try:
-                            res_url_2 = urllib.unquote_plus(res_url_1)
+                            res_url_2 = urllib.parse.unquote_plus(res_url_1)
                             resource_urls.append(res_url_2)
                         except:
                             pass
@@ -475,17 +471,19 @@ class Identifier:
                             pass
 
                     for resource in resources:
-                        if resource.url in resource_urls:
-                            return resource.id, package.name, \
-                                   (org.id if org else None), \
-                                   (pub.id if pub else None)
-                #print 'No resource found' 
-                return None, package.name, (org.id if org else None), \
-                       (pub.id if pub else None)
-            else:
-                #print 'No package found'
-                return None, None, None, None
-        return None, None, None, None
+                        for resource in resources:
+                            if resource.url in resource_urls:
+                                return resource.id, package.name, \
+                                       (org.id if org else None), \
+                                       (pub.id if pub else None), \
+                                       resource.format
+                        # print 'No resource found'
+                    return None, package.name, (org.id if org else None), \
+                           (pub.id if pub else None), None
+                else:
+                    # print 'No package found'
+                    return None, None, None, None, None
+            return None, None, None, None, None
 
 def delete(period_name):
     '''
@@ -503,40 +501,40 @@ def pre_update_dge_ga_package_stats(period_name):
     q = model.Session.query(DgeGaPackage).\
         filter(DgeGaPackage.year_month==period_name)
     log.debug("Deleting %d '%s' %s records" % (q.count(), period_name, DGE_GA_PACKAGE_TABLE_NAME))
-    print ("Deleting %d '%s' %s records" % (q.count(), period_name, DGE_GA_PACKAGE_TABLE_NAME))
+    print(("Deleting %d '%s' %s records" % (q.count(), period_name, DGE_GA_PACKAGE_TABLE_NAME)))
     q.delete()
 
     model.Session.flush()
     model.Session.commit()
     model.repo.commit_and_remove()
     log.debug('...done')
-    print '...done'
+    print('...done')
 
 def pre_update_dge_ga_resource_stats(period_name):
     q = model.Session.query(DgeGaResource).\
         filter(DgeGaResource.year_month==period_name)
     log.debug("Deleting %d '%s' %s records" % (q.count(), period_name, DGE_GA_RESOURCE_TABLE_NAME))
-    print ("Deleting %d '%s' %s records" % (q.count(), period_name, DGE_GA_RESOURCE_TABLE_NAME))
+    print(("Deleting %d '%s' %s records" % (q.count(), period_name, DGE_GA_RESOURCE_TABLE_NAME)))
     q.delete()
 
     model.Session.flush()
     model.Session.commit()
     model.repo.commit_and_remove()
     log.debug('...done')
-    print '...done'
+    print('...done')
 
 def pre_update_dge_ga_visit_stats(period_name):
     q = model.Session.query(DgeGaVisit).\
         filter(DgeGaVisit.year_month==period_name)
     log.debug("Deleting %d '%s' %s records" % (q.count(), period_name, DGE_GA_VISIT_TABLE_NAME))
-    print ("Deleting %d '%s' %s records" % (q.count(), period_name, DGE_GA_VISIT_TABLE_NAME))
+    print(("Deleting %d '%s' %s records" % (q.count(), period_name, DGE_GA_VISIT_TABLE_NAME)))
     q.delete()
 
     model.Session.flush()
     model.Session.commit()
     model.repo.commit_and_remove()
     log.debug('...done')
-    print '...done'
+    print('...done')
 
 def _get_previous_dge_ga_package_stats(url):
     pack_name = None
@@ -564,16 +562,16 @@ def _get_previous_dge_ga_package_stats(url):
                         pub_id = row[2]
 
                     if row_count > 2:
-                        print ("WARNING url {} -> Found {} distinct values for (package_name, organization_id, publisher_id)".format(url, row_count))
+                        print(("WARNING url {} -> Found {} distinct values for (package_name, organization_id, publisher_id)".format(url, row_count)))
                     if row_count == 0:
-                        print ("WARNING url {} -> Not found values for (package_name, organization_id, publisher_id)".format(url))
+                        print(("WARNING url {} -> Not found values for (package_name, organization_id, publisher_id)".format(url)))
         except Exception as e:
-            print "Exception {}"
-            print str(e)
+            print("Exception {}")
+            print(str(e))
             try:
-                print "EXCEPTION res_url {}, pack_url {} -> Exception {}".format(resource_url, package_url, str(e))
+                print("EXCEPTION res_url {}, pack_url {} -> Exception {}".format(resource_url, package_url, str(e)))
             except:
-                print "Exception {}".format(str(e))
+                print("Exception {}".format(str(e)))
 
     return pack_name, org_id, pub_id
 
@@ -582,15 +580,16 @@ def _get_previous_dge_ga_resource_stats(resource_url, package_url):
     pack_name = None
     org_id = None
     pub_id = None
+    res_format = None
     if resource_url and package_url:
         try:
             try:
-                resource_url = unicode(resource_url).encode('utf-8')
+                resource_url = str(resource_url)
             except Exception as ex:
-                print 'exception coding... {}'.format(str(ex))
+                print('Exception with resource_url format... {}'.format(str(ex)))
                 pass
             items = set (
-                (result[0], result[1], result[2], result[3]) for result in model.Session.query(DgeGaResource.resource_id, DgeGaResource.package_name, DgeGaResource.organization_id, DgeGaResource.publisher_id).\
+                (result[0], result[1], result[2], result[3], result[4]) for result in model.Session.query(DgeGaResource.resource_id, DgeGaResource.package_name, DgeGaResource.organization_id, DgeGaResource.publisher_id, DgeGaResource.format).\
                 filter(DgeGaResource.package_url==package_url).\
                 filter(DgeGaResource.url==resource_url).\
                 filter(DgeGaResource.year_month!='All').\
@@ -601,6 +600,8 @@ def _get_previous_dge_ga_resource_stats(resource_url, package_url):
                 filter(DgeGaResource.organization_id!=None).\
                 filter(DgeGaResource.publisher_id!='').\
                 filter(DgeGaResource.publisher_id!=None).\
+                filter(DgeGaResource.format!='').\
+                filter(DgeGaResource.format!=None).\
                 all())
             row_count = 0
             if items:
@@ -611,17 +612,18 @@ def _get_previous_dge_ga_resource_stats(resource_url, package_url):
                         pack_name = row[1]
                         org_id = row[2]
                         pub_id = row[3]
+                        res_format = row[4]
                 if row_count > 2:
-                    print ("WARNING res_url {}, pack_url {} -> Found {} distinct values for (res_id, package_name, organization_id, publisher_id)".format(resource_url, package_url, row_count))
+                    print(("WARNING res_url {}, pack_url {} -> Found {} distinct values for (res_id, package_name, organization_id, publisher_id)".format(resource_url, package_url, row_count)))
                 if row_count == 0:
-                    print ("WARNING res_url {}, pack_url {} -> Not found values for (res_id, package_name, organization_id, publisher_id)".format(resource_url, package_url))
+                    print(("WARNING res_url {}, pack_url {} -> Not found values for (res_id, package_name, organization_id, publisher_id)".format(resource_url, package_url)))
         except Exception as e:
             try:
-                print "EXCEPTION res_url {}, pack_url {} -> Exception {}".format(resource_url, package_url, str(e))
+                print("EXCEPTION res_url {}, pack_url {} -> Exception {}".format(resource_url, package_url, str(e)))
             except:
-                print str(e)
+                print(str(e))
 
-    return res_id, pack_name, org_id, pub_id
+    return res_id, pack_name, org_id, pub_id, res_format
 
 def update_dge_ga_package_stats(period_name, period_complete_day, url_data,
                      print_progress=False):
@@ -629,7 +631,7 @@ def update_dge_ga_package_stats(period_name, period_complete_day, url_data,
     Given a list of urls and number of hits for each during a given period,
     stores them in DgeGaPackage under the period.
     '''
-    print "Updating dge_ga_package..."
+    print("Updating dge_ga_package...")
     progress_total = len(url_data)
     progress_count = 0
     if print_progress:
@@ -672,7 +674,7 @@ def update_dge_ga_package_stats(period_name, period_complete_day, url_data,
                         pub_id = url_dict[2]
 
             if pack_name is None:
-                pack_name = u''
+                pack_name = ''
             values = {
                       'year_month': period_name,
                       'end_day': period_complete_day,
@@ -685,7 +687,7 @@ def update_dge_ga_package_stats(period_name, period_complete_day, url_data,
             model.Session.add(DgeGaPackage(**values))
             urls_in_dge_ga_package_this_period.add(url)
         model.Session.commit()
-    print "...Updated dge_ga_package"
+    print("...Updated dge_ga_package")
 
 def update_dge_ga_resource_stats(period_name, period_complete_day, url_data,
                      print_progress=False):
@@ -693,7 +695,7 @@ def update_dge_ga_resource_stats(period_name, period_complete_day, url_data,
     Given a list of urls and number of hits for each during a given period,
     stores them in DgeGaResource under the period.
     '''
-    print "Updating dge_ga_resource..."
+    print("Updating dge_ga_resource...")
     progress_total = len(url_data)
     progress_count = 0
     if print_progress:
@@ -719,16 +721,18 @@ def update_dge_ga_resource_stats(period_name, period_complete_day, url_data,
                 item.total_events = int(item.total_events or 0) + int(events or 0)
                 model.Session.add(item)
             else:
-                res_id, pack_name, org_id, pub_id = identifier.get_resource_information(resource_url, package_url)
+                res_id, pack_name, org_id, pub_id, res_format = identifier.get_resource_information(resource_url,
+                                                                                                    package_url)
 
-                #Only if package not found, possible purged dataset, check previous stats
+                # Only if package not found, possible purged dataset, check previous stats
                 if pack_name is None or res_id is None:
-                    #get persisted data from other periods
-                    url = '%s-%s'%(resource_url, package_url)
+                    # get persisted data from other periods
+                    url = '%s-%s' % (resource_url, package_url)
                     if url not in processed_urls:
-                        res_id, pack_name, org_id, pub_id = _get_previous_dge_ga_resource_stats(resource_url, package_url)
+                        res_id, pack_name, org_id, pub_id, res_format = _get_previous_dge_ga_resource_stats(resource_url,
+                                                                                                package_url)
                         processed_urls.append(url)
-                        processed_urls_dict[url] = (res_id, pack_name, org_id, pub_id)
+                        processed_urls_dict[url] = (res_id, pack_name, org_id, pub_id, res_format)
                     else:
                         url_dict = processed_urls_dict.get(url, None)
                         if url_dict:
@@ -736,25 +740,27 @@ def update_dge_ga_resource_stats(period_name, period_complete_day, url_data,
                             pack_name = url_dict[1]
                             org_id = url_dict[2]
                             pub_id = url_dict[3]
+                            res_format = url_dict[4]
 
                 if res_id is None:
-                    res_id = u''
+                    res_id = ''
 
                 values = {
-                          'year_month': period_name,
-                          'end_day': period_complete_day,
-                          'url': resource_url,
-                          'package_url': package_url,
-                          'total_events': events,
-                          'resource_id' : res_id,
-                          'package_name': pack_name,
-                          'organization_id': org_id,
-                          'publisher_id': pub_id
-                         }
+                    'year_month': period_name,
+                    'end_day': period_complete_day,
+                    'url': resource_url,
+                    'package_url': package_url,
+                    'total_events': events,
+                    'resource_id': res_id,
+                    'package_name': pack_name,
+                    'organization_id': org_id,
+                    'publisher_id': pub_id,
+                    'format': res_format
+                }
                 model.Session.add(DgeGaResource(**values))
                 urls_in_dge_ga_resource_this_period.add((resource_url, package_url))
             model.Session.commit()
-    print "... Updated dge_ga_resource"
+    print("... Updated dge_ga_resource")
 
 def update_dge_ga_visit_stats(period_name, period_complete_day, data,
                      print_progress=False):
@@ -762,7 +768,7 @@ def update_dge_ga_visit_stats(period_name, period_complete_day, data,
     Given a list of sections and number of sessions for each during a given period,
     stores them in DgeGaVisit under the period.
     '''
-    print "Updating dge_ga_visits..."
+    print("Updating dge_ga_visits...")
     progress_total = len(data)
     progress_count = 0
     if print_progress:
@@ -780,7 +786,7 @@ def update_dge_ga_visit_stats(period_name, period_complete_day, data,
                  }
         model.Session.add(DgeGaVisit(**values))
         model.Session.commit()
-    print "... Updated dge_ga_visits"
+    print("... Updated dge_ga_visits")
 
 def post_update_dge_ga_package_stats():
 
@@ -794,13 +800,13 @@ def post_update_dge_ga_package_stats():
     q = model.Session.query(DgeGaPackage).\
         filter_by(year_month='All')
     log.debug("Deleting %d 'All' dge_ga_package records..." % q.count())
-    print ("Deleting %d 'All' dge_ga_package records..." % q.count())
+    print(("Deleting %d 'All' dge_ga_package records..." % q.count()))
     q.delete()
 
     # For dataset URLs:
     # Calculate the total views/visits for All months
     log.debug('Calculating DgeGaPackage "All" records')
-    print 'Calculating DgeGaPackage "All" records'
+    print('Calculating DgeGaPackage "All" records')
     query = '''select package_name, organization_id, publisher_id, sum(pageviews::int)
                from dge_ga_packages
                where package_name != ''
@@ -861,7 +867,7 @@ def post_update_dge_ga_package_stats():
             model.Session.commit()
 
     log.debug('... Created dge_ga_package "All" records')
-    print '... Created dge_ga_package "All" records'
+    print('... Created dge_ga_package "All" records')
 
 def post_update_dge_ga_resource_stats():
 
@@ -876,34 +882,25 @@ def post_update_dge_ga_resource_stats():
     q = model.Session.query(DgeGaResource).\
         filter_by(year_month='All')
     log.debug("Deleting %d 'All' dge_ga_resource records..." % q.count())
-    print("Deleting %d 'All' dge_ga_resource records..." % q.count())
+    print(("Deleting %d 'All' dge_ga_resource records..." % q.count()))
     q.delete()
 
     # For resource URLs:
     # Calculate the total events for All months
     log.debug('Calculating DgeGaResource "All" records')
     print ('Calculating DgeGaResource "All" records')
-    '''SDA-890
-        Se modifica la query para obtener estadisticas 'All' incluyendo la url del recurso
-        ya que la información que se esta dando sobre los datos de descargas es por url de distribucion.
-        No se tiene en cuenta la url del package, ya que se ha podido acceder a la
-        descarga desde el conjunto de datos /catalogo/<name_conjunto_datos)
-        o desde la pagina de visualización de la distribucion /catalogo/<name_conjunto_datos/resource/<id_resource)
-        La package del url se construira a partir del package_name para que no se tengan en cuenta
-        desde donde se hace la visita
-    '''
+
     query = '''select url, resource_id, concat('/catalogo/', package_name) as package_url, package_name,
-               organization_id, publisher_id, sum(total_events::int),
+               organization_id, publisher_id, format, sum(total_events::int),
                concat(resource_id, concat('|', concat(package_name, concat('|' , url)))) as res_id
                from dge_ga_resources
                where resource_id != '' and package_name != ''
                and organization_id != '' and publisher_id != ''
                and lower(year_month) != 'all'
-               group by url, resource_id, package_name, organization_id, publisher_id
+               group by url, resource_id, package_name, organization_id, publisher_id, format
                order by sum(total_events::int) desc
                '''
     res = model.Session.execute(query).fetchall()
-
     # Get datasets with more than a organizaton
     query = '''select concat(t.resource_id, concat('|', concat(t.package_name, concat('|' ,t.url)))) as res_id,
                t.resource_id, t.url, t.package_name, t.orgs from (select p.resource_id, p.url,
@@ -916,8 +913,8 @@ def post_update_dge_ga_resource_stats():
     res2 = model.Session.execute(query).fetchall()
 
     duplicated = {}
-    deleted_resources = []
-    for url, resource_id, package_url, package_name, org_id, pub_id, events, res_id in res:
+    index1 = 0
+    for url, resource_id, package_url, package_name, org_id, pub_id, res_format, events, res_id in res:
         if not any(d['res_id'] == res_id for d in res2):
             values = {
                 'year_month': "All",
@@ -929,9 +926,31 @@ def post_update_dge_ga_resource_stats():
                 'package_name': package_name,
                 'organization_id': org_id,
                 'publisher_id': pub_id,
+                'format': res_format,
             }
-            model.Session.add(DgeGaResource(**values))
-            model.Session.commit()
+            if index1 % 10000 == 0:
+                log.debug("Resources processed: %d" % index1)
+            index1 += 1
+            try:
+                model.Session.add(DgeGaResource(**values))
+                model.Session.commit()
+            except IntegrityError as e:
+                assert isinstance(e.orig, UniqueViolation)  # proves the original exception
+                model.Session.rollback()
+                results = model.Session.query(DgeGaResource) \
+                    .filter(DgeGaResource.year_month == 'All') \
+                    .filter(DgeGaResource.package_url == package_url) \
+                    .filter(DgeGaResource.url == url) \
+                    .all()
+                result = [x for x in results if x.resource_id == resource_id]
+                model.Session.query(DgeGaResource) \
+                    .filter(DgeGaResource.resource_id == result[0].resource_id) \
+                    .filter(DgeGaResource.package_url == result[0].package_url) \
+                    .filter(DgeGaResource.year_month == result[0].year_month) \
+                    .filter(DgeGaResource.url == result[0].url) \
+                    .update({'total_events': events})
+                model.Session.commit()
+
         else:
             if resource_id in duplicated:
                 duplicated[res_id] = duplicated[res_id] + events
@@ -941,7 +960,7 @@ def post_update_dge_ga_resource_stats():
     # Insert duplicated resources
     for key in duplicated:
         query = '''select organization_id, publisher_id, package_name,
-                 concat('/catalogo/', package_name) as packageurl, resource_id, url
+                 concat('/catalogo/', package_name) as packageurl, resource_id, url, format
                  from dge_ga_resources
                  where concat(resource_id, concat('|', concat(package_name, concat('|' ,url)))) = '%s'
                  and lower(year_month) != 'all' order by year_month desc limit 1;'''
@@ -957,6 +976,7 @@ def post_update_dge_ga_resource_stats():
                 'package_name': res3[0][2],
                 'organization_id': res3[0][0],
                 'publisher_id': res3[0][1],
+                'format': res3[0][6],
             }
             model.Session.add(DgeGaResource(**values))
             model.Session.commit()
@@ -964,5 +984,5 @@ def post_update_dge_ga_resource_stats():
     end = datetime.datetime.now()
     log.debug("... Created 'All' dge_ga_resource records in %s milliseconds" % (
         (end-init).total_seconds()*1000))
-    print("... Created 'All' dge_ga_resource records in %s milliseconds" %
-          ((end-init).total_seconds()*1000))
+    print(("... Created 'All' dge_ga_resource records in %s milliseconds" %
+          ((end-init).total_seconds()*1000)))
