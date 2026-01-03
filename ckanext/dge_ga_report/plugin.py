@@ -15,10 +15,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-# this is a namespace package
-try:
-    import pkg_resources
-    pkg_resources.declare_namespace(__name__)
-except ImportError:
-    import pkgutil
-    __path__ = pkgutil.extend_path(__path__, __name__)
+import logging
+import ckan.lib.helpers as h
+import ckan.plugins as p
+from ckan.plugins import toolkit
+
+log = logging.getLogger('ckanext.dge_ga_report')
+
+class DgeGAReportException(Exception):
+    pass
+
+
+class DgeGaReportPlugin(p.SingletonPlugin):
+    p.implements(p.IConfigurer, inherit=True)
+
+    def update_config(self, config):
+        toolkit.add_template_directory(config, 'templates')
+        toolkit.add_public_directory(config, 'public')

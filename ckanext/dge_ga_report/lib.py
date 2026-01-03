@@ -15,10 +15,25 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-# this is a namespace package
 try:
-    import pkg_resources
-    pkg_resources.declare_namespace(__name__)
+    # optional fancy progress bar you can install
+    from progressbar import ProgressBar, Percentage, Bar, ETA
+
+    class GaProgressBar(ProgressBar):
+        def __init__(self, total):
+            if total == 0:
+                return
+            widgets = ['Test: ', Percentage(), ' ', Bar(),
+                       ' ', ETA(), ' ']
+            ProgressBar.__init__(self, widgets=widgets,
+                                 maxval=total)
+            self.start()
+
 except ImportError:
-    import pkgutil
-    __path__ = pkgutil.extend_path(__path__, __name__)
+    class GaProgressBar(object):
+        def __init__(self, total):
+            self.total = total
+
+        def update(self, count):
+            if count % 100 == 0:
+                print '.. %d/%d done so far' % (count, self.total)
