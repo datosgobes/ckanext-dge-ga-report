@@ -1,6 +1,6 @@
-# Copyright (C) 2022 Entidad Pública Empresarial Red.es
+# Copyright (C) 2025 Entidad Pública Empresarial Red.es
 #
-# This file is part of "dge_ga_report (datos.gob.es)".
+# This file is part of "dge-ga-report (datos.gob.es)".
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -9,7 +9,7 @@
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
@@ -38,7 +38,7 @@ setup(
     long_description=long_description,
 
     # The project's main homepage.
-    url='https://github.com//ckanext-dge-ga-report',
+    url='https://github.com/datosgobes/ckanext-dge-ga-report',
 
     # Author details
     author='''''',
@@ -77,8 +77,8 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/technical.html#install-requires-vs-requirements-files
     install_requires=['gdata',
-        'google-api-python-client==1.4.1',
-        'oauth2client==1.4.12'],
+        'google-api-python-client==1.6.7',
+        'oauth2client==4.1.3'],
 
     namespace_packages=['ckanext', 'ckanext.dge_ga_report'],
     # If there are data files included in your packages that need to be
