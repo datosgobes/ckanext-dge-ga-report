@@ -1,4 +1,4 @@
-# Copyright (C) 2025 Entidad Pública Empresarial Red.es
+# Copyright (C) 2026 Entidad Pública Empresarial Red.es
 #
 # This file is part of "dge-ga-report (datos.gob.es)".
 #
@@ -266,7 +266,7 @@ def generar_csv_catalogo_datos_publico_evolucion():
     where key like 'total'
     order by year_month asc;
     """
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
     date = datetime.datetime.now().strftime('%Y-%m-%d')
 
     public_dir = os.path.join(os.path.dirname(__file__), 'public',dashboard_csv_dir,date)
@@ -326,7 +326,7 @@ def generar_csv_catalogo_datos_publico_por_nivel_administracion():
                 ELSE 7
             end;
     """
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
     date = datetime.datetime.now().strftime('%Y-%m-%d')
 
     public_dir = os.path.join(os.path.dirname(__file__), 'public',dashboard_csv_dir,date)
@@ -379,7 +379,7 @@ def generar_csv_catalogo_datos_publico_por_categoria():
 	        where theme like '%datos.gob.es/kos/%'
 	order by value desc, theme asc;
     """
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
     date = datetime.datetime.now().strftime('%Y-%m-%d')
 
     public_dir = os.path.join(os.path.dirname(__file__), 'public',dashboard_csv_dir,date)
@@ -489,7 +489,7 @@ def generar_csv_catalogo_datos_publico_por_formato_distribucion():
     group by r.format
     order by value desc;
     """
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
     date = datetime.datetime.now().strftime('%Y-%m-%d')
 
     public_dir = os.path.join(os.path.dirname(__file__), 'public',dashboard_csv_dir,date)
@@ -513,7 +513,9 @@ def generar_csv_contenido_publico_por_tipo():
 	GROUP BY year_month
 	ORDER BY year_month;
     """
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    # Obtener la ruta base desde la configuración
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
+    # Obtener la fecha actual en formato YYYY-MM-DD
     date = datetime.datetime.now().strftime('%Y-%m-%d')
 
     public_dir = os.path.join(os.path.dirname(__file__), 'public',dashboard_csv_dir,date)
@@ -530,7 +532,9 @@ def generar_csv_visitas_publico_evolucion():
     sql = """
     SELECT year_month as date, sessions as value FROM dge_ga_visits WHERE key = 'all' order by year_month;
     """
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    # Obtener la ruta base desde la configuración
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
+    # Obtener la fecha actual en formato YYYY-MM-DD
     date = datetime.datetime.now().strftime('%Y-%m-%d')
     public_dir = os.path.join(os.path.dirname(__file__), 'public',dashboard_csv_dir,date)
     if not os.path.exists(public_dir):
@@ -545,7 +549,9 @@ def generar_csv_visitas_publico_catalogo_nacional():
     sql = """
     SELECT year_month as date,  sessions as catalogo  FROM dge_ga_visits WHERE key_value = 'catalogo' order by year_month;
     """
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    # Obtener la ruta base desde la configuración
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
+    # Obtener la fecha actual en formato YYYY-MM-DD
     date = datetime.datetime.now().strftime('%Y-%m-%d')
     public_dir = os.path.join(os.path.dirname(__file__), 'public',dashboard_csv_dir,date)
     if not os.path.exists(public_dir):
@@ -576,7 +582,9 @@ def generar_csv_visitas_publico_contenido():
 		GROUP BY year_month
 		ORDER BY year_month;
     """
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    # Obtener la ruta base desde la configuración
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
+    # Obtener la fecha actual en formato YYYY-MM-DD
     date = datetime.datetime.now().strftime('%Y-%m-%d')
     public_dir = os.path.join(os.path.dirname(__file__), 'public',dashboard_csv_dir,date)
     if not os.path.exists(public_dir):
@@ -596,13 +604,30 @@ def generar_csv_visitas_publico_sectores():
   		  SUM(CASE WHEN key_value = 'transporte' THEN sessions ELSE 0 END) AS transporte,
 		  SUM(CASE WHEN key_value = 'salud-bienestar' THEN sessions ELSE 0 END) AS "salud-bienestar",
   		  SUM(CASE WHEN key_value = 'turismo' THEN sessions ELSE 0 END) AS turismo,
-		  SUM(CASE WHEN key_value = 'justicia-sociedad' THEN sessions ELSE 0 END) AS "justicia-sociedad"
+		  SUM(CASE WHEN key_value = 'justicia-sociedad' THEN sessions ELSE 0 END) AS "justicia-sociedad",
+          SUM(CASE WHEN key_value = 'ciencia-tecnologia' THEN sessions ELSE 0 END) AS "ciencia-tecnologia",
+          SUM(CASE WHEN key_value = 'comercio' THEN sessions ELSE 0 END) AS "comercio",
+          SUM(CASE WHEN key_value = 'demografia' THEN sessions ELSE 0 END) AS "demografia",
+          SUM(CASE WHEN key_value = 'deporte' THEN sessions ELSE 0 END) AS "deporte",
+          SUM(CASE WHEN key_value = 'economia' THEN sessions ELSE 0 END) AS "economia",
+          SUM(CASE WHEN key_value = 'empleo' THEN sessions ELSE 0 END) AS "empleo",
+          SUM(CASE WHEN key_value = 'energia' THEN sessions ELSE 0 END) AS "energia",
+          SUM(CASE WHEN key_value = 'hacienda' THEN sessions ELSE 0 END) AS "hacienda",
+          SUM(CASE WHEN key_value = 'industria' THEN sessions ELSE 0 END) AS "industria",
+          SUM(CASE WHEN key_value = 'medio-rural' THEN sessions ELSE 0 END) AS "medio-rural",
+          SUM(CASE WHEN key_value = 'sector-publico' THEN sessions ELSE 0 END) AS "sector-publico",
+          SUM(CASE WHEN key_value = 'seguridad' THEN sessions ELSE 0 END) AS "seguridad",
+          SUM(CASE WHEN key_value = 'sociedad-bienestar' THEN sessions ELSE 0 END) AS "sociedad-bienestar",
+          SUM(CASE WHEN key_value = 'urbanismo-infraestructuras' THEN sessions ELSE 0 END) AS "urbanismo-infraestructuras",
+          SUM(CASE WHEN key_value = 'vivienda' THEN sessions ELSE 0 END) AS "vivienda"
     FROM dge_ga_visits WHERE key_value in
-        ('agricultura' , 'cultura', 'educacion', 'justicia-sociedad', 'salud-bienestar', 'transporte', 'turismo')
+        ('agricultura' , 'cultura', 'educacion', 'justicia-sociedad', 'salud-bienestar', 'transporte', 'turismo', 'ciencia-tecnologia', 'comercio', 'demografia', 'deporte', 'economia', 'empleo', 'energia', 'hacienda', 'industria', 'medio-rural', 'sector-publico', 'seguridad', 'sociedad-bienestar', 'urbanismo-infraestructuras', 'vivienda')
 	GROUP BY year_month
 	ORDER BY year_month;
     """
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    # Obtener la ruta base desde la configuración
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
+    # Obtener la fecha actual en formato YYYY-MM-DD
     date = datetime.datetime.now().strftime('%Y-%m-%d')
     public_dir = os.path.join(os.path.dirname(__file__), 'public',dashboard_csv_dir,date)
     if not os.path.exists(public_dir):
@@ -654,7 +679,9 @@ def generar_csv_visitas_publico_mas_vistos():
 	ORDER BY
 	    year_month DESC, rn;
     """
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    # Obtener la ruta base desde la configuración
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
+    # Obtener la fecha actual en formato YYYY-MM-DD
     date = datetime.datetime.now().strftime('%Y-%m-%d')
 
     public_dir = os.path.join(os.path.dirname(__file__), 'public',dashboard_csv_dir,date)
@@ -868,7 +895,9 @@ def generar_csv_catalogo_admin_evolucion_nivel_administracion():
 	GROUP BY year_month
 	ORDER BY year_month ASC;
     """
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    # Obtener la ruta base desde la configuración
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
+    # Obtener la fecha actual en formato YYYY-MM-DD
     date = datetime.datetime.now().strftime('%Y-%m-%d')
 
     public_dir = os.path.join(os.path.dirname(__file__), 'public',dashboard_csv_dir,date)
@@ -917,7 +946,8 @@ FROM cols;
         log.error("No se pudo generar la consulta dinámica")
         raise Exception("No se pudo generar la consulta dinámica")
 
-    dashboard_csv_dir = config.get('ckanext-dge-ga-report.routing_dashboard_csv', '')
+    # Obtener la ruta base desde la configuración
+    dashboard_csv_dir = config.get('ckanext-dge-ga-report.routing_dashboard_csv', 'dashboard-csv')
 
     date = datetime.datetime.now().strftime('%Y-%m-%d')
 
@@ -942,7 +972,9 @@ def generar_csv_catalogo_admin_distribuciones():
 	    key = 'num_resources'
 	order by key_value, year_month;
     """
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    # Obtener la ruta base desde la configuración
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
+    # Obtener la fecha actual en formato YYYY-MM-DD
     date = datetime.datetime.now().strftime('%Y-%m-%d')
 
     public_dir = os.path.join(os.path.dirname(__file__), 'public',dashboard_csv_dir,date)
@@ -990,7 +1022,9 @@ def generar_csv_visitas_admin_mas_vistos():
                 AND p.private = FALSE
         ) s3;
     """
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    # Obtener la ruta base desde la configuración
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
+    # Obtener la fecha actual en formato YYYY-MM-DD
     date = datetime.datetime.now().strftime('%Y-%m-%d')
 
     public_dir = os.path.join(os.path.dirname(__file__), 'public',dashboard_csv_dir,date)
@@ -1011,7 +1045,9 @@ def generar_csv_contenidos_admin_comentarios_recibidos():
     group by year_month
     order by year_month;
     """
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    # Obtener la ruta base desde la configuración
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
+    # Obtener la fecha actual en formato YYYY-MM-DD
     date = datetime.datetime.now().strftime('%Y-%m-%d')
 
     public_dir = os.path.join(os.path.dirname(__file__), 'public',dashboard_csv_dir,date)
@@ -1034,7 +1070,9 @@ def generar_csv_publicadores_admin_evolucion():
 		dge_dashboard_publishers
 	order by year_month;
     """
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+     # Obtener la ruta base desde la configuración
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
+    # Obtener la fecha actual en formato YYYY-MM-DD
     date = datetime.datetime.now().strftime('%Y-%m-%d')
 
     public_dir = os.path.join(os.path.dirname(__file__), 'public',dashboard_csv_dir,date)
@@ -1165,7 +1203,9 @@ ORDER BY CASE org_levels.adm_level
     ELSE 7
 END;
     """
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    # Obtener la ruta base desde la configuración
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
+    # Obtener la fecha actual en formato YYYY-MM-DD
     date = datetime.datetime.now().strftime('%Y-%m-%d')
 
     public_dir = os.path.join(os.path.dirname(__file__), 'public', dashboard_csv_dir,date)
@@ -1287,7 +1327,9 @@ LEFT JOIN (
 LEFT JOIN "group" g ON g.id = publishers.pub
 ORDER BY g.title collate "C";
     """
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    # Obtener la ruta base desde la configuración
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
+    # Obtener la fecha actual en formato YYYY-MM-DD
     date = datetime.datetime.now().strftime('%Y-%m-%d')
 
     public_dir = os.path.join(os.path.dirname(__file__), 'public', dashboard_csv_dir,date)
@@ -1320,7 +1362,7 @@ def generar_csv_contenido_por_tipo_administracion():
         WHEN CONVERT(n.`type` USING utf8mb4) COLLATE utf8mb4_unicode_ci = 'sectores' THEN 'Sectores'
         ELSE CONVERT(n.`type` USING utf8mb4)
     END AS "Tipo de contenido",
-    COUNT(DISTINCT nfd.title) AS "Número de contenidos"
+    COUNT(DISTINCT nfd.nid) AS "Número de contenidos"
     FROM node n
     INNER JOIN node_field_data nfd ON n.type = nfd.type
     WHERE status = 1 AND nfd.langcode = 'es'
@@ -1343,7 +1385,9 @@ def generar_csv_contenido_por_tipo_administracion():
         ELSE 99
     END;
     """)
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    # Obtener la ruta base desde la configuración
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
+    # Obtener la fecha actual en formato YYYY-MM-DD
     date = datetime.datetime.now().strftime('%Y-%m-%d')
 
     public_dir = os.path.join(os.path.dirname(__file__), 'public', dashboard_csv_dir,date)
@@ -1373,7 +1417,9 @@ def generar_csv_disponibilidad_datos_por_estado():
             and d.langcode = 'es'
         group by d.name ;
     """)
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    # Obtener la ruta base desde la configuración
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
+    # Obtener la fecha actual en formato YYYY-MM-DD
     date = datetime.datetime.now().strftime('%Y-%m-%d')
 
     public_dir = os.path.join(os.path.dirname(__file__), 'public', dashboard_csv_dir,date)
@@ -1401,7 +1447,9 @@ def generar_csv_usuarios_por_organismo():
         GROUP by d.name
         order by d.name asc;
     """)
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    # Obtener la ruta base desde la configuración
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
+    # Obtener la fecha actual en formato YYYY-MM-DD
     date = datetime.datetime.now().strftime('%Y-%m-%d')
 
     public_dir = os.path.join(os.path.dirname(__file__), 'public', dashboard_csv_dir,date)
@@ -1441,7 +1489,9 @@ def generar_csv_usuarios_por_nivel_administracion():
         GROUP BY s1.adm_level
         ORDER BY num_users DESC;
     """)
-    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','')
+    # Obtener la ruta base desde la configuración
+    dashboard_csv_dir =config.get('ckanext-dge-ga-report.routing_dashboard_csv','dashboard-csv')
+    # Obtener la fecha actual en formato YYYY-MM-DD
     date = datetime.datetime.now().strftime('%Y-%m-%d')
 
     public_dir = os.path.join(os.path.dirname(__file__), 'public', dashboard_csv_dir,date)

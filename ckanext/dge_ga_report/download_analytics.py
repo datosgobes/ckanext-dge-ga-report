@@ -1,4 +1,4 @@
-# Copyright (C) 2025 Entidad Pública Empresarial Red.es
+# Copyright (C) 2026 Entidad Pública Empresarial Red.es
 #
 # This file is part of "dge-ga-report (datos.gob.es)".
 #
@@ -262,7 +262,7 @@ class DownloadAnalytics(object):
         {
             'key': 'section',
             'name': 'documentacion',
-            'seccions2_regex': '^(documentacion|documentation|documentacio|dokumentazioa)$',
+            'seccions2_regex': '^(infografias|infographics|infografies|infografiak|informes y guias|reports and guides|informes i guies|informes e guias|informeak eta gidak|ejercicios de datos|data exercises|exercicis de dades|exercicios de datos|datuen erabilerak|conocimiento|knowledge|coneixement|conecemento|ezagutzaren|informes y estudios|reports and studies|informes i estudis|informes e estudos|txostenak eta ikerketak|guias|guides|guies|gidak|materiales formativos|training materials|materials formatius|materiais formativos|prestakuntza materialak|normativas y estrategias|regulations and strategies|normatives i estrategies|normativa e estratexias|araudia eta estrategiak)$',
             'exluded_url_regex': [],
             'metrics': 'eventCount',
             'sort': True
@@ -399,7 +399,7 @@ class DownloadAnalytics(object):
         {
             'key': 'section',
             'name': 'informes-guias',
-            'seccions2_regex': '^(informes y guias|reports and guides|informes i guies|informes e guias|informeak eta gidak)$',
+            'seccions2_regex': '^(informes y guias|reports and guides|informes i guies|informes e guias|informeak eta gidak|conocimiento|knowledge|coneixement|conecemento|ezagutzaren|informes y estudios|reports and studies|informes i estudis|informes e estudos|txostenak eta ikerketak|guias|guides|guies|gidak|materiales formativos|training materials|materials formatius|materiais formativos|prestakuntza materialak|normativas y estrategias|regulations and strategies|normatives i estrategies|normativa e estratexias|araudia eta estrategiak)$',
             'excluded_url_regex': [],
             'metrics': 'eventCount',
             'sort': True
