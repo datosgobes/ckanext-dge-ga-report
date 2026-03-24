@@ -1,4 +1,4 @@
-# Copyright (C) 2025 Entidad Pública Empresarial Red.es
+# Copyright (C) 2026 Entidad Pública Empresarial Red.es
 #
 # This file is part of "dge-ga-report (datos.gob.es)".
 #
@@ -38,7 +38,7 @@ setup(
     long_description=long_description,
 
     # The project's main homepage.
-    url='https://github.com/datosgobes/ckanext-dge-ga-report',
+    url='https://github.com//ckanext-dge-ga-report',
 
     # Author details
     author='''''',
