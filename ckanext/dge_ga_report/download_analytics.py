@@ -25,6 +25,7 @@ import logging
 import urllib.request, urllib.parse, urllib.error
 
 from ckan.plugins.toolkit import (config)
+from ckanext.dge.helpers import dge_resource_format_value
 from . import ga_model
 
 log = logging.getLogger(__name__)
@@ -686,6 +687,17 @@ class DownloadAnalytics(object):
         }
     ]
 
+    RESOURCE_EVENTS = [
+        {
+            'event_name': 'click_download',
+            'dimension_name': 'customEvent:download_url'
+        },
+        {
+            'event_name': 'exit_link',
+            'dimension_name': 'customEvent:exit_url'
+        },
+    ]
+
     def __init__(self, service=None, token=None, profile_id=None, profile_id_gtm=None,
                  delete_first=False, stat=None, print_progress=False,
                  kind_stats=None, save_stats=False, is_ga4=False):
@@ -795,10 +807,18 @@ class DownloadAnalytics(object):
                     ga_model.pre_update_dge_ga_resource_stats(period_name)
 
                 log.info('Downloading analytics for resource views')
-                data = self.download(start_date, end_date,
-                                     DownloadAnalytics.RESOURCE_URL_REGEX,
-                                     DownloadAnalytics.RESOURCE_URL_EXCLUDED_REGEXS,
-                                     stat)
+                data = {}
+                for resource_event in self.RESOURCE_EVENTS:
+                    event_name = resource_event.get('event_name', None)
+                    dimension_name = resource_event.get('dimension_name', None)
+                    resource_data = self.download(start_date, end_date,
+                                        DownloadAnalytics.RESOURCE_URL_REGEX,
+                                        DownloadAnalytics.RESOURCE_URL_EXCLUDED_REGEXS,
+                                        stat, None, None, None, event_name, dimension_name)
+                    if resource_data:
+                        if stat not in data:
+                            data[stat] = []
+                        data[stat].extend(resource_data[stat])
                 if data:
                     if self.save_stats:
                         log.info('Storing resource views (%i rows)', len(data.get(stat, [])))
@@ -852,7 +872,8 @@ class DownloadAnalytics(object):
                         for row in visits:
                             print(row)
 
-    def download(self, start_date, end_date, path=None, exludedPaths=None, stat=None, path_section=None, metrics_stat=None, sort_stat='None'):
+
+    def download(self, start_date, end_date, path=None, exludedPaths=None, stat=None, path_section=None, metrics_stat=None, sort_stat='None', event_name=None, dimension_name=None):
         '''Get views & visits data for particular paths & time period from GA
         '''
         if start_date and end_date and path is not None and stat:
@@ -919,10 +940,10 @@ class DownloadAnalytics(object):
                 if self.is_ga4:
                     query_filter = {
                         "filter": {
-                            "fieldName": "customEvent:event_category",
+                            "fieldName": "eventName",
                             "stringFilter": {
                                 "matchType": "EXACT",
-                                "value": "Resource",
+                                "value": event_name,
                                 "caseSensitive": False
                             }
                         }
@@ -944,10 +965,13 @@ class DownloadAnalytics(object):
                     sort = True
                     dimensions = [
                         {
-                            "name": "customEvent:event_label"
+                            "name": dimension_name
                         },
                         {
                             "name": "pagePath"
+                        },
+                        {
+                            "name": "customEvent:formato_descarga"
                         }
                     ]
                 else:
@@ -1082,12 +1106,8 @@ class DownloadAnalytics(object):
                 args["start-date"] = start_date
                 args["end-date"] = end_date
                 args["metrics"] = metrics
-                if stat == DownloadAnalytics.RESOURCE_STAT:
-                    args["ids"] = "ga:" + self.profile_id
-                    args["prop_ids"] = self.property_id
-                else:
-                    args["ids"] = "ga:" + self.profile_id_gtm
-                    args["prop_ids"] = self.property_id_gtm
+                args["ids"] = "ga:" + self.profile_id_gtm
+                args["prop_ids"] = self.property_id_gtm
                 args["filters"] = query
                 args["alt"] = "json"
                 if self.segment:
@@ -1136,21 +1156,24 @@ class DownloadAnalytics(object):
                 rows = results if results else None
                 if rows and len(rows) >= 1:
                     for row in rows:
+                        res_format = None
                         if self.is_ga4:
                             event_label = row.get('dimensionValues', [])[0]['value']
                             page_path = row.get('dimensionValues', [])[1]['value']
                             total_events = row.get('metricValues', [])[0]['value']
+                            res_format = row.get('dimensionValues', [])[2]['value']
                         else:
                             (event_label, page_path, total_events) = row
-                        page_url = strip_off_host_prefix(page_path)
-                        page_url = strip_off_language_prefix(page_url)
+                        page_url = strip_off_host_prefix(page_path)  # strips off domain e.g. datos.gob.es
+                        page_url = strip_off_language_prefix(page_url)  # strips off language
                         res_url = urllib.parse.unquote_plus(event_label)
+                        res_format = dge_resource_format_value(res_format)
                         if not pattern.match(page_url):
                             continue
                         for excluded_pattern in excluded_patterns:
                             if excluded_pattern.match(page_url):
                                 continue
-                        resources.append( (res_url, page_url, total_events) ) # Temporary hack
+                        resources.append( (res_url, page_url, total_events, res_format) ) # Temporary hack
                 return {stat:resources}
             elif stat == DownloadAnalytics.VISIT_STAT:
                 rows = results if results else None

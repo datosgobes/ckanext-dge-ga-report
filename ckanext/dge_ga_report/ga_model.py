@@ -28,10 +28,7 @@ from sqlalchemy import types
 from sqlalchemy.orm import mapper
 from sqlalchemy.sql.expression import cast
 from sqlalchemy import func
-from sqlalchemy.exc import InvalidRequestError, IntegrityError
-
-from psycopg2.errors import UniqueViolation 
-
+from sqlalchemy.exc import InvalidRequestError
 import ckan.model as model
 
 
@@ -397,7 +394,10 @@ class Identifier:
 
     def get_package_information(self, url):
 
+													 
+															  
         package_ref = self.get_package_ref(url)
+																						 
         if package_ref:
             package = model.Package.get(package_ref)
             if package:
@@ -414,12 +414,15 @@ class Identifier:
                 return package.name, (org.id if org else None), \
                        (pub.id if pub else None)
             else:
+										 
                 return None, None, None
         return None, None, None
 
     def get_resource_information(self, resource_url, package_url):
         package_ref = self.get_package_ref(package_url)
 
+														
+													 
         if package_ref:
             package = model.Package.get(package_ref)
             if package:
@@ -475,15 +478,14 @@ class Identifier:
                             if resource.url in resource_urls:
                                 return resource.id, package.name, \
                                        (org.id if org else None), \
-                                       (pub.id if pub else None), \
-                                       resource.format
+                                       (pub.id if pub else None)
                         # print 'No resource found'
                     return None, package.name, (org.id if org else None), \
-                           (pub.id if pub else None), None
+                           (pub.id if pub else None)
                 else:
                     # print 'No package found'
-                    return None, None, None, None, None
-            return None, None, None, None, None
+                    return None, None, None, None
+            return None, None, None, None
 
 def delete(period_name):
     '''
@@ -580,7 +582,6 @@ def _get_previous_dge_ga_resource_stats(resource_url, package_url):
     pack_name = None
     org_id = None
     pub_id = None
-    res_format = None
     if resource_url and package_url:
         try:
             try:
@@ -589,7 +590,7 @@ def _get_previous_dge_ga_resource_stats(resource_url, package_url):
                 print('Exception with resource_url format... {}'.format(str(ex)))
                 pass
             items = set (
-                (result[0], result[1], result[2], result[3], result[4]) for result in model.Session.query(DgeGaResource.resource_id, DgeGaResource.package_name, DgeGaResource.organization_id, DgeGaResource.publisher_id, DgeGaResource.format).\
+                (result[0], result[1], result[2], result[3]) for result in model.Session.query(DgeGaResource.resource_id, DgeGaResource.package_name, DgeGaResource.organization_id, DgeGaResource.publisher_id).\
                 filter(DgeGaResource.package_url==package_url).\
                 filter(DgeGaResource.url==resource_url).\
                 filter(DgeGaResource.year_month!='All').\
@@ -600,8 +601,6 @@ def _get_previous_dge_ga_resource_stats(resource_url, package_url):
                 filter(DgeGaResource.organization_id!=None).\
                 filter(DgeGaResource.publisher_id!='').\
                 filter(DgeGaResource.publisher_id!=None).\
-                filter(DgeGaResource.format!='').\
-                filter(DgeGaResource.format!=None).\
                 all())
             row_count = 0
             if items:
@@ -612,7 +611,6 @@ def _get_previous_dge_ga_resource_stats(resource_url, package_url):
                         pack_name = row[1]
                         org_id = row[2]
                         pub_id = row[3]
-                        res_format = row[4]
                 if row_count > 2:
                     print(("WARNING res_url {}, pack_url {} -> Found {} distinct values for (res_id, package_name, organization_id, publisher_id)".format(resource_url, package_url, row_count)))
                 if row_count == 0:
@@ -623,7 +621,7 @@ def _get_previous_dge_ga_resource_stats(resource_url, package_url):
             except:
                 print(str(e))
 
-    return res_id, pack_name, org_id, pub_id, res_format
+    return res_id, pack_name, org_id, pub_id
 
 def update_dge_ga_package_stats(period_name, period_complete_day, url_data,
                      print_progress=False):
@@ -708,7 +706,7 @@ def update_dge_ga_resource_stats(period_name, period_complete_day, url_data,
     processed_urls = []
     #dict with key:<resource_url-package_url> and value: (<res_id>, <package_name>, <org_id>, <pub_id>)
     processed_urls_dict = {} 
-    for resource_url, package_url, events in url_data:
+    for resource_url, package_url, events, res_format in url_data:
         progress_count += 1
         if print_progress:
             progress_bar.update(progress_count)
@@ -721,7 +719,7 @@ def update_dge_ga_resource_stats(period_name, period_complete_day, url_data,
                 item.total_events = int(item.total_events or 0) + int(events or 0)
                 model.Session.add(item)
             else:
-                res_id, pack_name, org_id, pub_id, res_format = identifier.get_resource_information(resource_url,
+                res_id, pack_name, org_id, pub_id = identifier.get_resource_information(resource_url,
                                                                                                     package_url)
 
                 # Only if package not found, possible purged dataset, check previous stats
@@ -729,10 +727,10 @@ def update_dge_ga_resource_stats(period_name, period_complete_day, url_data,
                     # get persisted data from other periods
                     url = '%s-%s' % (resource_url, package_url)
                     if url not in processed_urls:
-                        res_id, pack_name, org_id, pub_id, res_format = _get_previous_dge_ga_resource_stats(resource_url,
+                        res_id, pack_name, org_id, pub_id = _get_previous_dge_ga_resource_stats(resource_url,
                                                                                                 package_url)
                         processed_urls.append(url)
-                        processed_urls_dict[url] = (res_id, pack_name, org_id, pub_id, res_format)
+                        processed_urls_dict[url] = (res_id, pack_name, org_id, pub_id)
                     else:
                         url_dict = processed_urls_dict.get(url, None)
                         if url_dict:
@@ -740,7 +738,6 @@ def update_dge_ga_resource_stats(period_name, period_complete_day, url_data,
                             pack_name = url_dict[1]
                             org_id = url_dict[2]
                             pub_id = url_dict[3]
-                            res_format = url_dict[4]
 
                 if res_id is None:
                     res_id = ''
@@ -884,102 +881,99 @@ def post_update_dge_ga_resource_stats():
     log.debug("Deleting %d 'All' dge_ga_resource records..." % q.count())
     print(("Deleting %d 'All' dge_ga_resource records..." % q.count()))
     q.delete()
+	model.Session.flush()				 
 
     # For resource URLs:
     # Calculate the total events for All months
     log.debug('Calculating DgeGaResource "All" records')
     print ('Calculating DgeGaResource "All" records')
 
-    query = '''select url, resource_id, concat('/catalogo/', package_name) as package_url, package_name,
-               organization_id, publisher_id, format, sum(total_events::int),
-               concat(resource_id, concat('|', concat(package_name, concat('|' , url)))) as res_id
-               from dge_ga_resources
-               where resource_id != '' and package_name != ''
-               and organization_id != '' and publisher_id != ''
-               and lower(year_month) != 'all'
-               group by url, resource_id, package_name, organization_id, publisher_id, format
-               order by sum(total_events::int) desc
-               '''
-    res = model.Session.execute(query).fetchall()
-    # Get datasets with more than a organizaton
-    query = '''select concat(t.resource_id, concat('|', concat(t.package_name, concat('|' ,t.url)))) as res_id,
-               t.resource_id, t.url, t.package_name, t.orgs from (select p.resource_id, p.url,
-               p.package_name, count(p.organization_id) orgs from (select distinct
-               resource_id, url, package_name,  organization_id, publisher_id from
-               dge_ga_resources where resource_id != '' and
-               organization_id != '' and publisher_id != '' and lower(year_month) != 'all') p
-               group by p.resource_id, p.url, p.package_name) t where orgs > 1;
-               '''
-    res2 = model.Session.execute(query).fetchall()
-
-    duplicated = {}
-    index1 = 0
-    for url, resource_id, package_url, package_name, org_id, pub_id, res_format, events, res_id in res:
-        if not any(d['res_id'] == res_id for d in res2):
-            values = {
-                'year_month': "All",
-                'end_day': 0,
-                'url': url,
-                'package_url': package_url,
-                'total_events': events,
-                'resource_id': resource_id,
-                'package_name': package_name,
-                'organization_id': org_id,
-                'publisher_id': pub_id,
-                'format': res_format,
-            }
-            if index1 % 10000 == 0:
-                log.debug("Resources processed: %d" % index1)
-            index1 += 1
-            try:
-                model.Session.add(DgeGaResource(**values))
-                model.Session.commit()
-            except IntegrityError as e:
-                assert isinstance(e.orig, UniqueViolation)  # proves the original exception
-                model.Session.rollback()
-                results = model.Session.query(DgeGaResource) \
-                    .filter(DgeGaResource.year_month == 'All') \
-                    .filter(DgeGaResource.package_url == package_url) \
-                    .filter(DgeGaResource.url == url) \
-                    .all()
-                result = [x for x in results if x.resource_id == resource_id]
-                model.Session.query(DgeGaResource) \
-                    .filter(DgeGaResource.resource_id == result[0].resource_id) \
-                    .filter(DgeGaResource.package_url == result[0].package_url) \
-                    .filter(DgeGaResource.year_month == result[0].year_month) \
-                    .filter(DgeGaResource.url == result[0].url) \
-                    .update({'total_events': events})
-                model.Session.commit()
-
-        else:
-            if resource_id in duplicated:
-                duplicated[res_id] = duplicated[res_id] + events
-            else:
-                duplicated[res_id] = events
-
-    # Insert duplicated resources
-    for key in duplicated:
-        query = '''select organization_id, publisher_id, package_name,
-                 concat('/catalogo/', package_name) as packageurl, resource_id, url, format
-                 from dge_ga_resources
-                 where concat(resource_id, concat('|', concat(package_name, concat('|' ,url)))) = '%s'
-                 and lower(year_month) != 'all' order by year_month desc limit 1;'''
-        res3 = model.Session.execute(query % key).fetchall()
-        if len(res3) > 0:
-            values = {
-                'year_month': "All",
-                'end_day': 0,
-                'url': res3[0][5],
-                'package_url': res3[0][3],
-                'total_events': duplicated[key],
-                'resource_id': res[0][4],
-                'package_name': res3[0][2],
-                'organization_id': res3[0][0],
-                'publisher_id': res3[0][1],
-                'format': res3[0][6],
-            }
-            model.Session.add(DgeGaResource(**values))
-            model.Session.commit()
+    query = '''
+        with source_rows as (
+            select
+                url,
+                resource_id,
+                package_name,
+                organization_id,
+                publisher_id,
+                format,
+                year_month,
+                end_day,
+                total_events::int as total_events
+            from dge_ga_resources
+            where resource_id != ''
+            and package_name != ''
+            and organization_id != ''
+            and publisher_id != ''
+            and lower(year_month) != 'all'
+        ),
+        totals as (
+            select
+                url,
+                resource_id,
+                concat('/catalogo/', package_name) as package_url,
+                package_name,
+                sum(total_events) as total_events
+            from source_rows
+            group by url, resource_id, package_name
+        ),
+        selected_metadata as (
+            select distinct on (url, resource_id, package_name)
+                url,
+                resource_id,
+                package_name,
+                organization_id,
+                publisher_id,
+                format
+            from source_rows
+            order by
+                url,
+                resource_id,
+                package_name,
+                year_month desc,
+                end_day desc,
+                total_events desc,
+                organization_id asc,
+                publisher_id asc,
+                case when format is null or format = '' then 1 else 0 end,
+                format asc
+        )
+        insert into dge_ga_resources (
+            year_month,
+            end_day,
+            total_events,
+            url,
+            format,
+            package_url,
+            resource_id,
+            package_name,
+            organization_id,
+            publisher_id
+        )
+        select
+            'All' as year_month,
+            0 as end_day,
+            totals.total_events,
+            totals.url,
+            selected_metadata.format,
+            totals.package_url,
+            totals.resource_id,
+            totals.package_name,
+            selected_metadata.organization_id,
+            selected_metadata.publisher_id
+        from totals
+        join selected_metadata
+        on totals.url = selected_metadata.url
+        and totals.resource_id = selected_metadata.resource_id
+        and totals.package_name = selected_metadata.package_name
+        order by totals.total_events desc
+        '''
+    result = model.Session.execute(query)
+    model.Session.commit()
+    inserted = getattr(result, 'rowcount', -1)
+    if inserted is not None and inserted >= 0:
+        log.debug("Inserted %d 'All' dge_ga_resource records" % inserted)
+        print(("Inserted %d 'All' dge_ga_resource records" % inserted))
 
     end = datetime.datetime.now()
     log.debug("... Created 'All' dge_ga_resource records in %s milliseconds" % (
