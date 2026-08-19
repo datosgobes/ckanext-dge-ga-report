@@ -474,12 +474,10 @@ class Identifier:
                             pass
 
                     for resource in resources:
-                        for resource in resources:
-                            if resource.url in resource_urls:
-                                return resource.id, package.name, \
-                                       (org.id if org else None), \
-                                       (pub.id if pub else None)
-                        # print 'No resource found'
+                        return resource.id, package.name, \
+                                (org.id if org else None), \
+                                (pub.id if pub else None)
+                    # print 'No resource found'
                     return None, package.name, (org.id if org else None), \
                            (pub.id if pub else None)
                 else:
@@ -881,7 +879,7 @@ def post_update_dge_ga_resource_stats():
     log.debug("Deleting %d 'All' dge_ga_resource records..." % q.count())
     print(("Deleting %d 'All' dge_ga_resource records..." % q.count()))
     q.delete()
-	model.Session.flush()				 
+    model.Session.flush()
 
     # For resource URLs:
     # Calculate the total events for All months
